@@ -40,7 +40,7 @@ jobs:
 
   # ================= MOBILE TESTING =================
   mobile-tests:
-    runs-on: ubuntu-latest   # ✅ FIXED INDENTATION
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -61,10 +61,10 @@ jobs:
         with:
           node-version: '18'
 
-      # Install deps
+      # Install dependencies
       - run: pip install -r requirements.txt
 
-      # ✅ Stable Emulator Setup
+      # 🚀 Stable Emulator + ADB Fix
       - name: Run Emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -81,12 +81,47 @@ jobs:
             -accel off
             -no-snapshot
             -no-snapshot-save
+            -wipe-data
 
           disable-animations: true
+
           script: |
+            echo "Restarting ADB..."
+            adb kill-server || true
+            adb start-server
+
+            echo "Waiting for emulator..."
+            adb wait-for-device
+
+            echo "Fixing ADB offline issue..."
+            adb reconnect || true
+
+            echo "Devices:"
             adb devices
 
+            echo "Waiting for full boot..."
+
+            boot_completed=""
+            timeout=300
+
+            while [[ "$boot_completed" != "1" && $timeout -gt 0 ]]; do
+              boot_completed=$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
+              echo "Boot status: $boot_completed"
+              sleep 5
+              timeout=$((timeout-5))
+            done
+
+            if [[ "$boot_completed" != "1" ]]; then
+              echo "Emulator failed to boot!"
+              adb devices
+              exit 1
+            fi
+
+            echo "Emulator booted successfully ✅"
+
+            # Install & start Appium
             npm install -g appium
             appium > appium.log 2>&1 &
 
+            # Run Mobile Tests
             pytest tests/mobile --alluredir=allure-results-mobile
