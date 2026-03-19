@@ -23,12 +23,12 @@ jobs:
       with:
         python-version: '3.11'
 
-    - name: Install Dependencies
+    - name: Install Python Dependencies
       run: |
         pip install -r requirements.txt
 
     # -----------------------------
-    # ☕ Setup Java
+    # ☕ Setup Java (Required for Android)
     # -----------------------------
     - name: Setup Java
       uses: actions/setup-java@v4
@@ -43,7 +43,7 @@ jobs:
       uses: android-actions/setup-android@v3
 
     # -----------------------------
-    # 📱 Set Android Paths (CRITICAL)
+    # 📱 Set Android Paths (CRITICAL FIX)
     # -----------------------------
     - name: Set Android Paths
       run: |
@@ -53,7 +53,7 @@ jobs:
         mkdir -p $HOME/.android/avd
 
     # -----------------------------
-    # 📱 Install Emulator Packages
+    # 📱 Install Emulator + System Image
     # -----------------------------
     - name: Install Emulator Packages
       run: |
@@ -72,7 +72,7 @@ jobs:
           --force
 
     # -----------------------------
-    # 🔍 Verify AVD
+    # 🔍 Verify AVD (DEBUG)
     # -----------------------------
     - name: Verify AVD
       run: |
@@ -96,10 +96,21 @@ jobs:
 
         adb wait-for-device
 
-        echo "Waiting for emulator to boot..."
+        echo "⏳ Waiting for emulator boot..."
         adb shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 5; done'
 
+        echo "✅ Emulator Boot Completed"
+
+        # Extra delay for stability
+        sleep 20
+
         adb shell input keyevent 82
+
+    # -----------------------------
+    # 🔍 Check Connected Devices
+    # -----------------------------
+    - name: Check Devices
+      run: adb devices
 
     # -----------------------------
     # 📱 Install Appium
