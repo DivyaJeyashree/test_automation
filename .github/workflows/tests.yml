@@ -89,54 +89,50 @@ jobs:
           disable-animations: false
 
           script: |
-            echo "🔄 Restarting ADB..."
-            adb kill-server || true
-            adb start-server
+  echo "🔄 Restarting ADB..."
+  adb kill-server || true
+  adb start-server
 
-            adb wait-for-device
+  adb wait-for-device
 
-            echo "⏳ Waiting for emulator boot..."
+  echo "⏳ Waiting for emulator boot..."
 
-            boot_completed=""
-            timeout=300
+  timeout=300
+  boot_completed=0
 
-            while [ "$boot_completed" != "1" ] && [ $timeout -gt 0 ]; do
-              boot_completed=$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
-              echo "Boot status: $boot_completed"
-              sleep 5
-              timeout=$((timeout-5))
-            done
+  while [ "$boot_completed" != "1" ] && [ $timeout -gt 0 ]; do
+    boot_completed=$(adb shell getprop sys.boot_completed | tr -d '\r')
+    echo "Boot status: $boot_completed"
+    sleep 5
+    timeout=$((timeout-5))
+  done
 
-            if [ "$boot_completed" != "1" ]; then
-              echo "❌ Emulator boot failed"
-              exit 1
-            fi
+  if [ "$boot_completed" != "1" ]; then
+    echo "❌ Emulator boot failed"
+    exit 1
+  fi
 
-            echo "✅ Emulator ready"
+  echo "✅ Emulator ready"
 
-            # ✅ Install APK
-            echo "📲 Installing APK..."
-            adb install -r app.apk || true
+  # Install APK
+  adb install -r app.apk || true
 
-            # 🚀 Start Appium
-            echo "🚀 Starting Appium..."
-            appium > appium.log 2>&1 &
+  # Start Appium
+  echo "🚀 Starting Appium..."
+  appium > appium.log 2>&1 &
 
-            echo "⏳ Waiting for Appium..."
+  echo "⏳ Waiting for Appium..."
+  timeout=60
+  until curl -s http://127.0.0.1:4723/status > /dev/null; do
+    sleep 2
+    timeout=$((timeout-2))
+    if [ $timeout -le 0 ]; then
+      echo "❌ Appium failed"
+      cat appium.log
+      exit 1
+    fi
+  done
 
-            timeout=60
-            until curl -s http://127.0.0.1:4723/status > /dev/null; do
-              sleep 2
-              timeout=$((timeout-2))
+  echo "✅ Appium ready"
 
-              if [ $timeout -le 0 ]; then
-                echo "❌ Appium failed"
-                cat appium.log
-                exit 1
-              fi
-            done
-
-            echo "✅ Appium ready"
-
-            # ✅ Run Tests
-            pytest tests/mobile --alluredir=allure-results-mobile
+  pytest tests/mobile/test_app.py --alluredir=allure-results-mobile
