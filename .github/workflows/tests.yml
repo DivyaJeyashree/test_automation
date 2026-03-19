@@ -39,8 +39,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Install Browsers (Playwright)
-        run: |
-          playwright install --with-deps
+        run: playwright install --with-deps
 
       - name: Run Web Tests
         run: pytest tests/web --alluredir=allure-results-web
@@ -66,26 +65,27 @@ jobs:
         with:
           python-version: '3.11'
 
-      # Install Android SDK
+      # Install Android SDK (FIXED)
       - name: Install Android SDK
         run: |
           sudo apt-get update
           sudo apt-get install -y wget unzip
 
-          mkdir -p $HOME/android-sdk
-          cd $HOME/android-sdk
+          export ANDROID_HOME=$HOME/android-sdk
+          mkdir -p $ANDROID_HOME/cmdline-tools
+          cd $ANDROID_HOME/cmdline-tools
 
           wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
-          unzip commandlinetools-linux-*.zip
+          unzip commandlinetools-linux-*.zip -d temp
 
-          mkdir -p cmdline-tools/latest
-          mv cmdline-tools/* cmdline-tools/latest/
+          mkdir -p latest
+          mv temp/* latest/
+          rm -rf temp
 
-          export ANDROID_HOME=$HOME/android-sdk
           export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH
 
           yes | sdkmanager --licenses
-          sdkmanager "platform-tools" "emulator" "system-images;android-30;google_apis;x86_64"
+          sdkmanager "platform-tools" "emulator" "platforms;android-30" "system-images;android-30;google_apis;x86_64"
 
       # Create Emulator
       - name: Create Emulator
@@ -101,7 +101,7 @@ jobs:
           export ANDROID_HOME=$HOME/android-sdk
           export PATH=$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH
 
-          emulator -avd test -no-window -no-audio -no-boot-anim &
+          emulator -avd test -no-window -no-audio -no-boot-anim -accel off &
 
           adb wait-for-device
 
@@ -111,6 +111,12 @@ jobs:
           done
 
           adb devices
+
+      # Install Node (needed for Appium)
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
 
       # Install Appium
       - name: Install Appium
