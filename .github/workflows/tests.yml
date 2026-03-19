@@ -4,150 +4,143 @@ on: [push]
 
 jobs:
 
-# ================= API =================
+  # ================= API =================
+  api-tests:
+    runs-on: ubuntu-latest
 
-api-tests:
-runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
-```
-steps:
-  - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
-  - uses: actions/setup-python@v5
-    with:
-      python-version: '3.11'
+      - name: Install Dependencies
+        run: pip install -r requirements.txt
 
-  - name: Install Dependencies
-    run: pip install -r requirements.txt
+      - name: Run API Tests
+        run: pytest tests/api --alluredir=allure-results-api
 
-  - name: Run API Tests
-    run: pytest tests/api --alluredir=allure-results-api
-```
 
-# ================= WEB =================
+  # ================= WEB =================
+  web-tests:
+    runs-on: ubuntu-latest
 
-web-tests:
-runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
-```
-steps:
-  - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
-  - uses: actions/setup-python@v5
-    with:
-      python-version: '3.11'
+      - name: Install Dependencies
+        run: pip install -r requirements.txt
 
-  - name: Install Dependencies
-    run: pip install -r requirements.txt
+      - name: Install Playwright
+        run: playwright install --with-deps
 
-  - name: Install Playwright
-    run: playwright install --with-deps
+      - name: Run Web Tests
+        run: pytest tests/web --alluredir=allure-results-web
 
-  - name: Run Web Tests
-    run: pytest tests/web --alluredir=allure-results-web
-```
 
-# ================= MOBILE =================
+  # ================= MOBILE =================
+  mobile-tests:
+    runs-on: ubuntu-latest
 
-mobile-tests:
-runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
-```
-steps:
-  - uses: actions/checkout@v4
+      # Java
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
 
-  # Java
-  - uses: actions/setup-java@v4
-    with:
-      distribution: 'temurin'
-      java-version: '17'
+      # Python
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
-  # Python
-  - uses: actions/setup-python@v5
-    with:
-      python-version: '3.11'
+      # Node (Appium)
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
 
-  # Node (Appium)
-  - uses: actions/setup-node@v4
-    with:
-      node-version: '18'
+      # Install dependencies
+      - name: Install Dependencies
+        run: |
+          pip install -r requirements.txt
+          npm install -g appium
 
-  # Install dependencies
-  - name: Install Dependencies
-    run: |
-      pip install -r requirements.txt
-      npm install -g appium
+      # Emulator + Test
+      - name: Run Emulator & Execute Tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          target: google_apis
+          arch: x86_64
+          profile: pixel
 
-  # Emulator + Test
-  - name: Run Emulator & Execute Tests
-    uses: reactivecircus/android-emulator-runner@v2
-    with:
-      api-level: 30
-      target: google_apis
-      arch: x86_64
-      profile: pixel
+          emulator-options: >-
+            -no-window
+            -no-audio
+            -no-boot-anim
+            -gpu swiftshader_indirect
+            -accel off
+            -no-snapshot
+            -no-snapshot-save
+            -wipe-data
 
-      emulator-options: >-
-        -no-window
-        -no-audio
-        -no-boot-anim
-        -gpu swiftshader_indirect
-        -accel off
-        -no-snapshot
-        -no-snapshot-save
-        -wipe-data
+          disable-animations: false
 
-      disable-animations: false
+          script: |
+            bash <<'EOF'
 
-      script: |
-        bash <<'EOF'
+            echo "🔄 Restarting ADB..."
+            adb kill-server || true
+            adb start-server
 
-        echo "🔄 Restarting ADB..."
-        adb kill-server || true
-        adb start-server
+            adb wait-for-device
 
-        adb wait-for-device
+            echo "⏳ Waiting for emulator boot..."
 
-        echo "⏳ Waiting for emulator boot..."
+            timeout=300
+            boot_completed=0
 
-        timeout=300
-        boot_completed=0
+            while [ "$boot_completed" != "1" ] && [ $timeout -gt 0 ]; do
+              boot_completed=$(adb shell getprop sys.boot_completed | tr -d '\r')
+              echo "Boot status: $boot_completed"
+              sleep 5
+              timeout=$((timeout-5))
+            done
 
-        while [ "$boot_completed" != "1" ] && [ $timeout -gt 0 ]; do
-          boot_completed=$(adb shell getprop sys.boot_completed | tr -d '\r')
-          echo "Boot status: $boot_completed"
-          sleep 5
-          timeout=$((timeout-5))
-        done
+            if [ "$boot_completed" != "1" ]; then
+              echo "❌ Emulator boot failed"
+              exit 1
+            fi
 
-        if [ "$boot_completed" != "1" ]; then
-          echo "❌ Emulator boot failed"
-          exit 1
-        fi
+            echo "✅ Emulator ready"
 
-        echo "✅ Emulator ready"
+            echo "📲 Installing APK..."
+            adb install -r app.apk || true
 
-        echo "📲 Installing APK..."
-        adb install -r app.apk || true
+            echo "🚀 Starting Appium..."
+            appium > appium.log 2>&1 &
 
-        echo "🚀 Starting Appium..."
-        appium > appium.log 2>&1 &
+            echo "⏳ Waiting for Appium..."
+            timeout=60
+            until curl -s http://127.0.0.1:4723/status > /dev/null; do
+              sleep 2
+              timeout=$((timeout-2))
+              if [ $timeout -le 0 ]; then
+                echo "❌ Appium failed"
+                cat appium.log
+                exit 1
+              fi
+            done
 
-        echo "⏳ Waiting for Appium..."
-        timeout=60
-        until curl -s http://127.0.0.1:4723/status > /dev/null; do
-          sleep 2
-          timeout=$((timeout-2))
-          if [ $timeout -le 0 ]; then
-            echo "❌ Appium failed"
-            cat appium.log
-            exit 1
-          fi
-        done
+            echo "✅ Appium ready"
 
-        echo "✅ Appium ready"
+            pytest tests/mobile/test_app.py --alluredir=allure-results-mobile
 
-        pytest tests/mobile/test_app.py --alluredir=allure-results-mobile
-
-        EOF
-```
+            EOF
