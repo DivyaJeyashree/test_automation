@@ -40,30 +40,35 @@ jobs:
 
   # ================= MOBILE TESTING =================
   mobile-tests:
-    runs-on: ubuntu-latest   # ✅ FIXED
+    runs-on: ubuntu-latest
 
-    steps:                   # ✅ FIXED
+    steps:
       - uses: actions/checkout@v4
 
+      # Java
       - uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
+      # Python
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
+      # Node (Appium)
       - uses: actions/setup-node@v4
         with:
           node-version: '18'
 
-      - run: pip install -r requirements.txt
+      # Install dependencies
+      - name: Install Dependencies
+        run: pip install -r requirements.txt
 
-      # 🔥 FIXED EMULATOR STEP
+      # 🚀 Emulator Setup (ONLY boot + appium)
       - name: Run Emulator
-        continue-on-error: true
         uses: reactivecircus/android-emulator-runner@v2
+        continue-on-error: true
         with:
           api-level: 30
           target: google_apis
@@ -90,25 +95,29 @@ jobs:
             adb wait-for-device
             adb reconnect || true
 
-            echo "Waiting for boot..."
+            echo "Waiting for emulator boot..."
+
             boot_completed=""
             timeout=300
 
-            while [[ "$boot_completed" != "1" && $timeout -gt 0 ]]; do
+            while [ "$boot_completed" != "1" ] && [ $timeout -gt 0 ]; do
               boot_completed=$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
               echo "Boot status: $boot_completed"
               sleep 5
               timeout=$((timeout-5))
             done
 
-            if [[ "$boot_completed" != "1" ]]; then
-              echo "Emulator boot failed"
+            if [ "$boot_completed" != "1" ]; then
+              echo "⚠ Emulator boot failed"
               exit 1
             fi
 
-            echo "Emulator ready ✅"
+            echo "✅ Emulator ready"
 
+            # Start Appium
             npm install -g appium
             appium > appium.log 2>&1 &
 
-            pytest tests/mobile --alluredir=allure-results-mobile
+      # ✅ Separate clean test step (VERY IMPORTANT)
+      - name: Run Mobile Tests
+        run: pytest tests/mobile --alluredir=allure-results-mobile
