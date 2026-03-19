@@ -40,7 +40,7 @@ jobs:
 
   # ================= MOBILE TESTING =================
   mobile-tests:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest   # ✅ FIXED INDENTATION
 
     steps:
       - uses: actions/checkout@v4
@@ -61,10 +61,10 @@ jobs:
         with:
           node-version: '18'
 
-      # Install dependencies
+      # Install deps
       - run: pip install -r requirements.txt
 
-      # Start Android Emulator (🔥 BEST PRACTICE)
+      # ✅ Stable Emulator Setup
       - name: Run Emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -72,7 +72,17 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel
-          emulator-options: -no-window -no-audio -no-boot-anim
+
+          emulator-options: >
+            -no-window
+            -no-audio
+            -no-boot-anim
+            -gpu swiftshader_indirect
+            -accel off
+            -no-snapshot
+            -no-snapshot-save
+
+          disable-animations: true
           script: |
             adb devices
 
