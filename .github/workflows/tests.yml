@@ -49,35 +49,39 @@ jobs:
   mobile-tests:
     runs-on: ubuntu-latest
 
+    env:
+      ANDROID_HOME: ${{ runner.temp }}/android-sdk
+      ANDROID_SDK_ROOT: ${{ runner.temp }}/android-sdk
+      ANDROID_AVD_HOME: ${{ runner.temp }}/.android/avd
+
     steps:
       - uses: actions/checkout@v4
 
-      # Java for Android
+      # Java
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
-      # Python for pytest
+      # Python
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      # Node for Appium
+      # Node (for Appium)
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '18'
 
-      # Install Android SDK (FIXED PROPERLY)
+      # Install Android SDK
       - name: Install Android SDK
         run: |
           sudo apt-get update
           sudo apt-get install -y wget unzip
 
-          export ANDROID_HOME=$HOME/android-sdk
           mkdir -p $ANDROID_HOME/cmdline-tools
           cd $ANDROID_HOME/cmdline-tools
 
@@ -93,18 +97,25 @@ jobs:
           yes | sdkmanager --licenses
           sdkmanager "platform-tools" "emulator" "platforms;android-30" "system-images;android-30;google_apis;x86_64"
 
-      # Create Emulator
+      # Create AVD (FIXED)
       - name: Create Emulator
         run: |
-          export ANDROID_HOME=$HOME/android-sdk
           export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH
 
-          echo "no" | avdmanager create avd -n test -k "system-images;android-30;google_apis;x86_64"
+          mkdir -p $ANDROID_AVD_HOME
 
-      # Start Emulator
+          echo "no" | avdmanager create avd \
+            -n test \
+            -k "system-images;android-30;google_apis;x86_64" \
+            --device "pixel" \
+            --force
+
+          echo "Available AVDs:"
+          avdmanager list avd
+
+      # Start Emulator (FIXED)
       - name: Start Emulator
         run: |
-          export ANDROID_HOME=$HOME/android-sdk
           export PATH=$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH
 
           emulator -avd test -no-window -no-audio -no-boot-anim -accel off &
@@ -126,10 +137,10 @@ jobs:
       - name: Start Appium
         run: appium &
 
-      # Install Python dependencies
+      # Python deps
       - name: Install Dependencies
         run: pip install -r requirements.txt
 
-      # Run Mobile Tests
+      # Run Tests
       - name: Run Mobile Tests
         run: pytest tests/mobile --alluredir=allure-results-mobile
