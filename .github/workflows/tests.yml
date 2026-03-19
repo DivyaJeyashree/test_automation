@@ -67,8 +67,8 @@ jobs:
           pip install -r requirements.txt
           npm install -g appium
 
-      # ✅ FIXED INDENTATION HERE
-      - name: Run Emulator
+      # ✅ Run Android Emulator + Tests
+      - name: Run Emulator & Execute Tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 30
@@ -91,10 +91,14 @@ jobs:
           script: |
             bash << 'EOF'
 
+            echo "🔄 Restarting ADB..."
+            adb kill-server || true
+            adb start-server
+
             adb wait-for-device
             adb reconnect || true
 
-            echo "Waiting for emulator boot..."
+            echo "⏳ Waiting for emulator boot..."
 
             boot_completed=""
             timeout=300
@@ -107,16 +111,24 @@ jobs:
             done
 
             if [ "$boot_completed" != "1" ]; then
-              echo "Emulator boot failed"
+              echo "❌ Emulator boot failed"
               exit 1
             fi
 
-            echo "Emulator ready ✅"
+            echo "✅ Emulator ready"
 
-            # Start Appium
+            # 🔥 INSTALL YOUR APK
+            echo "📲 Installing APK..."
+            adb install -r app.apk || true
+
+            echo "📦 Installed packages:"
+            adb shell pm list packages | grep -i app || true
+
+            # 🔥 START APPIUM
+            echo "🚀 Starting Appium..."
             appium > appium.log 2>&1 &
 
-            echo "Waiting for Appium..."
+            echo "⏳ Waiting for Appium..."
 
             timeout=60
             until curl -s http://127.0.0.1:4723/status > /dev/null; do
@@ -124,13 +136,15 @@ jobs:
               timeout=$((timeout-2))
 
               if [ $timeout -le 0 ]; then
-                echo "Appium failed ❌"
+                echo "❌ Appium failed to start"
+                cat appium.log
                 exit 1
               fi
             done
 
-            echo "Appium ready ✅"
+            echo "✅ Appium ready"
 
+            # 🔥 RUN TESTS
             pytest tests/mobile --alluredir=allure-results-mobile
 
             EOF
