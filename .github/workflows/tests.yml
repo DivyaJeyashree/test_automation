@@ -4,7 +4,7 @@ on: [push]
 
 jobs:
 
-  # ================= API TESTING ================
+  # ================= API TESTING =================
   api-tests:
     runs-on: ubuntu-latest
 
@@ -67,8 +67,8 @@ jobs:
           pip install -r requirements.txt
           npm install -g appium
 
-      # Run Android Emulator
-            - name: Run Emulator
+      # ✅ FIXED INDENTATION HERE
+      - name: Run Emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 30
