@@ -1,4 +1,4 @@
-name: Test Automation
+name: Test Automation (API + Web + Mobile)
 
 on:
   push:
@@ -8,7 +8,14 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
+    env:
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+      ANDROID_HOME: /usr/local/lib/android/sdk
+
     steps:
+      # -------------------------
+      # Checkout Code
+      # -------------------------
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -20,12 +27,12 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install dependencies
+      - name: Install Python Dependencies
         run: |
           pip install -r requirements.txt
 
       # -------------------------
-      # Install Node + Appium
+      # Node + Appium Setup
       # -------------------------
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -38,22 +45,40 @@ jobs:
           appium driver install uiautomator2
 
       # -------------------------
-      # Install Android SDK + Emulator
+      # Android SDK Setup
       # -------------------------
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Emulator Packages
-        run: |
-          sdkmanager "platform-tools" "emulator" "system-images;android-30;google_apis;x86_64"
+      - name: Accept Licenses
+        run: yes | sdkmanager --licenses
 
-      - name: Create Emulator
+      - name: Install SDK Packages
         run: |
-          echo "no" | avdmanager create avd -n test -k "system-images;android-30;google_apis;x86_64"
+          sdkmanager --install \
+            "platform-tools" \
+            "emulator" \
+            "system-images;android-30;google_apis;x86_64"
 
+      # -------------------------
+      # Create Emulator (FIXED)
+      # -------------------------
+      - name: Create AVD
+        run: |
+          echo "no" | avdmanager create avd \
+            -n test \
+            -k "system-images;android-30;google_apis;x86_64" \
+            --device "pixel"
+
+      - name: Verify AVD
+        run: emulator -list-avds
+
+      # -------------------------
+      # Start Emulator
+      # -------------------------
       - name: Start Emulator
         run: |
-          $ANDROID_HOME/emulator/emulator -avd test -no-window -no-audio -no-boot-anim &
+          nohup $ANDROID_HOME/emulator/emulator -avd test -no-window -no-audio -no-boot-anim &
           adb wait-for-device
           adb shell input keyevent 82
 
@@ -63,12 +88,12 @@ jobs:
       - name: Start Appium
         run: |
           appium &
-          sleep 10
+          sleep 15
 
       # -------------------------
-      # Run Tests (API + WEB + MOBILE)
+      # Run Tests
       # -------------------------
-      - name: Run Tests
+      - name: Run Tests (API + Web + Mobile)
         run: |
           pytest tests --alluredir=allure-results
 
