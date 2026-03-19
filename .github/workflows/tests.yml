@@ -70,7 +70,7 @@ jobs:
         with:
           python-version: '3.11'
 
-      # Node (for Appium)
+      # Node (Appium requirement)
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -92,16 +92,16 @@ jobs:
           mv temp/cmdline-tools/* latest/
           rm -rf temp
 
-          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH
+          echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> $GITHUB_PATH
+          echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
+          echo "$ANDROID_HOME/emulator" >> $GITHUB_PATH
 
           yes | sdkmanager --licenses
           sdkmanager "platform-tools" "emulator" "platforms;android-30" "system-images;android-30;google_apis;x86_64"
 
-      # Create AVD (FIXED)
+      # Create Emulator
       - name: Create Emulator
         run: |
-          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH
-
           mkdir -p $ANDROID_AVD_HOME
 
           echo "no" | avdmanager create avd \
@@ -113,17 +113,17 @@ jobs:
           echo "Available AVDs:"
           avdmanager list avd
 
-      # Start Emulator (FIXED)
+      # Start Emulator
       - name: Start Emulator
         run: |
-          export PATH=$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH
-
           emulator -avd test -no-window -no-audio -no-boot-anim -accel off &
 
           adb wait-for-device
 
-          until adb shell getprop sys.boot_completed | grep -m 1 '1'; do
-            echo "Waiting for emulator..."
+          boot_completed=""
+          until [[ "$boot_completed" == "1" ]]; do
+            boot_completed=$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
+            echo "Waiting for emulator to boot..."
             sleep 5
           done
 
@@ -135,12 +135,13 @@ jobs:
 
       # Start Appium
       - name: Start Appium
-        run: appium &
+        run: |
+          appium > appium.log 2>&1 &
 
-      # Python deps
+      # Install Python deps
       - name: Install Dependencies
         run: pip install -r requirements.txt
 
-      # Run Tests
+      # Run Mobile Tests
       - name: Run Mobile Tests
         run: pytest tests/mobile --alluredir=allure-results-mobile
