@@ -28,7 +28,7 @@ jobs:
         pip install -r requirements.txt
 
     # -----------------------------
-    # ☕ Setup Java (Required for Android)
+    # ☕ Setup Java
     # -----------------------------
     - name: Setup Java
       uses: actions/setup-java@v4
@@ -43,16 +43,7 @@ jobs:
       uses: android-actions/setup-android@v3
 
     # -----------------------------
-    # 📱 FIX PATHS (VERY IMPORTANT)
-    # -----------------------------
-    - name: Set Android Home
-      run: |
-        echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
-        echo "ANDROID_SDK_HOME=$HOME/.android" >> $GITHUB_ENV
-        mkdir -p $HOME/.android/avd
-
-    # -----------------------------
-    # 📱 Install Emulator + System Image
+    # 📱 Install Emulator + Image
     # -----------------------------
     - name: Install Emulator Packages
       run: |
@@ -74,14 +65,14 @@ jobs:
     # -----------------------------
     - name: List AVDs
       run: |
-        $ANDROID_HOME/emulator/emulator -list-avds
+        emulator -list-avds
 
     # -----------------------------
     # 📱 Start Emulator
     # -----------------------------
     - name: Start Emulator
       run: |
-        $ANDROID_HOME/emulator/emulator -avd test -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect &
+        nohup emulator -avd test -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect &
         adb wait-for-device
         adb shell input keyevent 82
 
