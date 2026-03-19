@@ -11,5 +11,5 @@ def get_driver():
     options.set_capability("appActivity", "com.whatsapp.HomeActivity")
     options.set_capability("noReset", True)
 
-    driver = webdriver.Remote("http://127.0.0.1:4723/wd/hub", options=options)  # ← /wd/hub for v1
+    driver = webdriver.Remote("http://127.0.0.1:4723", options=options)
     return driver
