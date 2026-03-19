@@ -63,12 +63,13 @@ jobs:
 
       # Install dependencies
       - name: Install Dependencies
-        run: pip install -r requirements.txt
+        run: |
+          pip install -r requirements.txt
+          npm install -g appium
 
-      # 🚀 Emulator Setup (ONLY boot + appium)
+      # Run Android Emulator
       - name: Run Emulator
         uses: reactivecircus/android-emulator-runner@v2
-        continue-on-error: true
         with:
           api-level: 30
           target: google_apis
@@ -88,10 +89,6 @@ jobs:
           disable-animations: false
 
           script: |
-            echo "Restarting ADB..."
-            adb kill-server || true
-            adb start-server
-
             adb wait-for-device
             adb reconnect || true
 
@@ -108,16 +105,31 @@ jobs:
             done
 
             if [ "$boot_completed" != "1" ]; then
-              echo "⚠ Emulator boot failed"
+              echo "Emulator boot failed"
               exit 1
             fi
 
-            echo "✅ Emulator ready"
+            echo "Emulator ready ✅"
 
             # Start Appium
-            npm install -g appium
             appium > appium.log 2>&1 &
 
-      # ✅ Separate clean test step (VERY IMPORTANT)
-      - name: Run Mobile Tests
-        run: pytest tests/mobile --alluredir=allure-results-mobile
+            # Wait for Appium
+            echo "Waiting for Appium to start..."
+
+            timeout=60
+            until curl -s http://127.0.0.1:4723/status > /dev/null; do
+              echo "Waiting for Appium..."
+              sleep 2
+              timeout=$((timeout-2))
+
+              if [ $timeout -le 0 ]; then
+                echo "Appium failed to start ❌"
+                exit 1
+              fi
+            done
+
+            echo "Appium is ready ✅"
+
+            # Run Mobile Tests
+            pytest tests/mobile --alluredir=allure-results-mobile
