@@ -68,7 +68,7 @@ jobs:
           npm install -g appium
 
       # Run Android Emulator
-      - name: Run Emulator
+            - name: Run Emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 30
@@ -89,6 +89,8 @@ jobs:
           disable-animations: false
 
           script: |
+            bash << 'EOF'
+
             adb wait-for-device
             adb reconnect || true
 
@@ -114,22 +116,21 @@ jobs:
             # Start Appium
             appium > appium.log 2>&1 &
 
-            # Wait for Appium
-            echo "Waiting for Appium to start..."
+            echo "Waiting for Appium..."
 
             timeout=60
             until curl -s http://127.0.0.1:4723/status > /dev/null; do
-              echo "Waiting for Appium..."
               sleep 2
               timeout=$((timeout-2))
 
               if [ $timeout -le 0 ]; then
-                echo "Appium failed to start ❌"
+                echo "Appium failed ❌"
                 exit 1
               fi
             done
 
-            echo "Appium is ready ✅"
+            echo "Appium ready ✅"
 
-            # Run Mobile Tests
             pytest tests/mobile --alluredir=allure-results-mobile
+
+            EOF
