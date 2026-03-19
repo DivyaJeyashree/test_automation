@@ -1,15 +1,12 @@
+import os
 from appium import webdriver
-from selenium.webdriver.common.options import ArgOptions
+from appium.options.android import UiAutomator2Options
 
 def get_driver():
-    options = ArgOptions()
-    options.set_capability("platformName", "Android")
-    options.set_capability("platformVersion", "15")
-    options.set_capability("deviceName", "0020965BT005049")
-    options.set_capability("automationName", "UiAutomator2")
-    options.set_capability("appPackage", "com.whatsapp")
-    options.set_capability("appActivity", "com.whatsapp.HomeActivity")
-    options.set_capability("noReset", True)
+    options = UiAutomator2Options()
+    options.platform_name = "Android"
+    options.device_name = "emulator-5554"
+    options.app = os.path.abspath("app.apk")
 
     driver = webdriver.Remote("http://127.0.0.1:4723", options=options)
     return driver
