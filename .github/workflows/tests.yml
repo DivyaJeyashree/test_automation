@@ -4,7 +4,7 @@ on: [push]
 
 jobs:
 
-  # ================= API TESTING =================
+  # ================= API =================
   api-tests:
     runs-on: ubuntu-latest
 
@@ -20,7 +20,7 @@ jobs:
       - run: pytest tests/api --alluredir=allure-results-api
 
 
-  # ================= WEB TESTING =================
+  # ================= WEB =================
   web-tests:
     runs-on: ubuntu-latest
 
@@ -38,7 +38,7 @@ jobs:
       - run: pytest tests/web --alluredir=allure-results-web
 
 
-  # ================= MOBILE TESTING =================
+  # ================= MOBILE =================
   mobile-tests:
     runs-on: ubuntu-latest
 
@@ -67,7 +67,7 @@ jobs:
           pip install -r requirements.txt
           npm install -g appium
 
-      # ✅ Run Android Emulator + Tests
+      # ✅ Emulator + Test
       - name: Run Emulator & Execute Tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -89,14 +89,11 @@ jobs:
           disable-animations: false
 
           script: |
-            bash << 'EOF'
-
             echo "🔄 Restarting ADB..."
             adb kill-server || true
             adb start-server
 
             adb wait-for-device
-            adb reconnect || true
 
             echo "⏳ Waiting for emulator boot..."
 
@@ -117,14 +114,11 @@ jobs:
 
             echo "✅ Emulator ready"
 
-            # 🔥 INSTALL YOUR APK
+            # ✅ Install APK
             echo "📲 Installing APK..."
             adb install -r app.apk || true
 
-            echo "📦 Installed packages:"
-            adb shell pm list packages | grep -i app || true
-
-            # 🔥 START APPIUM
+            # 🚀 Start Appium
             echo "🚀 Starting Appium..."
             appium > appium.log 2>&1 &
 
@@ -136,7 +130,7 @@ jobs:
               timeout=$((timeout-2))
 
               if [ $timeout -le 0 ]; then
-                echo "❌ Appium failed to start"
+                echo "❌ Appium failed"
                 cat appium.log
                 exit 1
               fi
@@ -144,7 +138,5 @@ jobs:
 
             echo "✅ Appium ready"
 
-            # 🔥 RUN TESTS
+            # ✅ Run Tests
             pytest tests/mobile --alluredir=allure-results-mobile
-
-            EOF
