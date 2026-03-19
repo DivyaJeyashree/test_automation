@@ -11,7 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Python
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -30,7 +30,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Python
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -38,7 +38,7 @@ jobs:
       - name: Install Dependencies
         run: pip install -r requirements.txt
 
-      - name: Install Browsers (Playwright)
+      - name: Install Playwright Browsers
         run: playwright install --with-deps
 
       - name: Run Web Tests
@@ -52,7 +52,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Java needed for Android
+      # Java for Android
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
@@ -65,7 +65,13 @@ jobs:
         with:
           python-version: '3.11'
 
-      # Install Android SDK (FIXED)
+      # Node for Appium
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      # Install Android SDK (FIXED PROPERLY)
       - name: Install Android SDK
         run: |
           sudo apt-get update
@@ -79,7 +85,7 @@ jobs:
           unzip commandlinetools-linux-*.zip -d temp
 
           mkdir -p latest
-          mv temp/* latest/
+          mv temp/cmdline-tools/* latest/
           rm -rf temp
 
           export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH
@@ -112,12 +118,6 @@ jobs:
 
           adb devices
 
-      # Install Node (needed for Appium)
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-
       # Install Appium
       - name: Install Appium
         run: npm install -g appium
@@ -126,7 +126,7 @@ jobs:
       - name: Start Appium
         run: appium &
 
-      # Install Python deps
+      # Install Python dependencies
       - name: Install Dependencies
         run: pip install -r requirements.txt
 
