@@ -23,7 +23,7 @@ jobs:
       with:
         python-version: '3.11'
 
-    - name: Install Python Dependencies
+    - name: Install Dependencies
       run: |
         pip install -r requirements.txt
 
@@ -43,7 +43,7 @@ jobs:
       uses: android-actions/setup-android@v3
 
     # -----------------------------
-    # 📱 FIX: Set Android Paths (CRITICAL)
+    # 📱 Set Android Paths (CRITICAL)
     # -----------------------------
     - name: Set Android Paths
       run: |
@@ -53,7 +53,7 @@ jobs:
         mkdir -p $HOME/.android/avd
 
     # -----------------------------
-    # 📱 Install Emulator + Image
+    # 📱 Install Emulator Packages
     # -----------------------------
     - name: Install Emulator Packages
       run: |
@@ -61,7 +61,7 @@ jobs:
         sdkmanager "platform-tools" "emulator" "system-images;android-30;google_apis;x86_64"
 
     # -----------------------------
-    # 📱 Create AVD (FIXED)
+    # 📱 Create AVD
     # -----------------------------
     - name: Create AVD
       run: |
@@ -72,7 +72,7 @@ jobs:
           --force
 
     # -----------------------------
-    # 🔍 Debug AVD (VERY IMPORTANT)
+    # 🔍 Verify AVD
     # -----------------------------
     - name: Verify AVD
       run: |
@@ -81,15 +81,23 @@ jobs:
         ls -R $HOME/.android
 
     # -----------------------------
-    # 📱 Start Emulator (FIXED)
+    # 📱 Start Emulator (FINAL FIX)
     # -----------------------------
     - name: Start Emulator
       run: |
-        nohup emulator -avd test -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect &
+        nohup emulator -avd test \
+          -no-window \
+          -no-audio \
+          -no-boot-anim \
+          -gpu swiftshader_indirect \
+          -accel off \
+          -no-snapshot \
+          -no-metrics &
+
         adb wait-for-device
 
         echo "Waiting for emulator to boot..."
-        adb shell while [[ -z $(getprop sys.boot_completed) ]]; do sleep 5; done
+        adb shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 5; done'
 
         adb shell input keyevent 82
 
@@ -107,7 +115,7 @@ jobs:
     - name: Start Appium Server
       run: |
         appium &
-        sleep 20
+        sleep 25
 
     # -----------------------------
     # 🧪 Run API Tests
