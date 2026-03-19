@@ -43,12 +43,14 @@ jobs:
       uses: android-actions/setup-android@v3
 
     # -----------------------------
-    # 📱 Add Emulator to PATH (IMPORTANT FIX)
+    # 📱 FIX: Set Android Paths (CRITICAL)
     # -----------------------------
-    - name: Set Android Path
+    - name: Set Android Paths
       run: |
         echo "$ANDROID_SDK_ROOT/emulator" >> $GITHUB_PATH
         echo "$ANDROID_SDK_ROOT/platform-tools" >> $GITHUB_PATH
+        echo "ANDROID_AVD_HOME=$HOME/.android/avd" >> $GITHUB_ENV
+        mkdir -p $HOME/.android/avd
 
     # -----------------------------
     # 📱 Install Emulator + Image
@@ -59,28 +61,36 @@ jobs:
         sdkmanager "platform-tools" "emulator" "system-images;android-30;google_apis;x86_64"
 
     # -----------------------------
-    # 📱 Create AVD
+    # 📱 Create AVD (FIXED)
     # -----------------------------
     - name: Create AVD
       run: |
         echo "no" | avdmanager create avd \
           -n test \
           -k "system-images;android-30;google_apis;x86_64" \
+          --device "pixel" \
           --force
 
     # -----------------------------
-    # 🔍 Debug AVD (IMPORTANT)
+    # 🔍 Debug AVD (VERY IMPORTANT)
     # -----------------------------
-    - name: List AVDs
-      run: emulator -list-avds
+    - name: Verify AVD
+      run: |
+        echo "Available AVDs:"
+        emulator -list-avds
+        ls -R $HOME/.android
 
     # -----------------------------
-    # 📱 Start Emulator
+    # 📱 Start Emulator (FIXED)
     # -----------------------------
     - name: Start Emulator
       run: |
         nohup emulator -avd test -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect &
         adb wait-for-device
+
+        echo "Waiting for emulator to boot..."
+        adb shell while [[ -z $(getprop sys.boot_completed) ]]; do sleep 5; done
+
         adb shell input keyevent 82
 
     # -----------------------------
