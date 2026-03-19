@@ -22,8 +22,9 @@ jobs:
     - name: Install Python Dependencies
       run: |
         pip install -r requirements.txt
+        pip install pytest allure-pytest
 
-    # ✅ FIX: Install Playwright Browsers
+    # 🌐 Install Playwright
     - name: Install Playwright Browsers
       run: |
         pip install playwright
@@ -40,65 +41,56 @@ jobs:
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
 
-    # 📱 Set Android Paths
-    - name: Set Android Paths
-      run: |
-        echo "$ANDROID_SDK_ROOT/emulator" >> $GITHUB_PATH
-        echo "$ANDROID_SDK_ROOT/platform-tools" >> $GITHUB_PATH
-        echo "ANDROID_AVD_HOME=$HOME/.android/avd" >> $GITHUB_ENV
-        mkdir -p $HOME/.android/avd
-
-    # 📱 Install Emulator
+    # 📱 Install SDK + Emulator
     - name: Install Emulator Packages
       run: |
         yes | sdkmanager --licenses
-        sdkmanager "platform-tools" "emulator" "system-images;android-30;google_apis;x86_64"
+        sdkmanager "platform-tools" "emulator" \
+        "system-images;android-33;google_apis_playstore;x86_64"
 
     # 📱 Create AVD
     - name: Create AVD
       run: |
         echo "no" | avdmanager create avd \
-          -n test \
-          -k "system-images;android-30;google_apis;x86_64" \
-          --device "pixel" \
-          --force
+        -n test \
+        -k "system-images;android-33;google_apis_playstore;x86_64" \
+        --device "pixel" --force
 
-    # 🔍 Verify AVD
-    - name: Verify AVD
-      run: |
-        emulator -list-avds
-        ls -R $HOME/.android
-
-    # 📱 Start Emulator (NO KVM FIX)
+    # 📱 Start Emulator
     - name: Start Emulator
       run: |
         nohup emulator -avd test \
           -no-window \
           -no-audio \
-          -no-boot-anim \
           -gpu swiftshader_indirect \
-          -accel off \
           -no-snapshot \
-          -no-metrics &
+          -no-boot-anim &
 
         adb wait-for-device
 
-        echo "Waiting for emulator boot..."
+        echo "Waiting for full boot..."
         adb shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 5; done'
 
-        adb shell input keyevent 82
+        echo "Device booted ✅"
 
-    # 📱 Install Appium
+        adb root || true
+        adb shell settings put global window_animation_scale 0
+        adb shell settings put global transition_animation_scale 0
+        adb shell settings put global animator_duration_scale 0
+
+    # 📱 Install Node + Appium
     - name: Install Appium
       run: |
+        sudo apt-get update
+        sudo apt-get install -y nodejs npm
         npm install -g appium
         appium driver install uiautomator2
 
-    # 📱 Start Appium
+    # 📱 Start Appium Server
     - name: Start Appium Server
       run: |
-        appium &
-        sleep 20
+        nohup appium --log-level debug > appium.log 2>&1 &
+        sleep 30
 
     # 🧪 Run API Tests
     - name: Run API Tests
@@ -112,7 +104,7 @@ jobs:
     - name: Run Mobile Tests
       run: pytest tests/mobile --alluredir=allure-results
 
-    # 📊 Upload Report
+    # 📊 Upload Allure Results
     - name: Upload Allure Results
       uses: actions/upload-artifact@v4
       with:
