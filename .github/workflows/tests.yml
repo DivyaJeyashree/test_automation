@@ -58,7 +58,7 @@ jobs:
 
     # 🧪 Run Tests
     - name: Run Tests
-      run: pytest --alluredir=allure-results
+      run: pytest tests --alluredir=allure-results
       continue-on-error: true
 
     # 📊 Install Allure
