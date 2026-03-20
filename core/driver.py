@@ -1,24 +1,26 @@
-import os
 from appium import webdriver
 from appium.options.android import UiAutomator2Options
-
 
 def get_driver():
     options = UiAutomator2Options()
 
-    # ✅ APK path (local + GitHub)
-    local_apk = os.path.expanduser("~/Downloads/app-release-4-3-26.apk")
-    repo_apk = os.path.abspath("app.apk")
+    options.platform_name = "Android"
+    options.device_name = "emulator-5554"
 
-    options.app = local_apk if os.path.exists(local_apk) else repo_apk
+    # 🔥 IMPORTANT
+    options.app = "/home/runner/work/test_automation/test_automation/app.apk"
 
-    # ✅ Emulator capabilities
-    options.set_capability("platformName", "Android")
-    options.set_capability("automationName", "UiAutomator2")
-    options.set_capability("deviceName", "emulator-5554")
+    # 🔥 Your app details
+    options.app_package = "com.almuzaini.almuzaini"
+    options.app_activity = "com.almuzaini.almuzaini.MainActivity"
 
-    options.set_capability("autoGrantPermissions", True)
-    options.set_capability("noReset", False)
+    options.automation_name = "UiAutomator2"
+
+    # ✅ FIXES
+    options.no_reset = True
+    options.new_command_timeout = 300
+    options.adb_exec_timeout = 120000   # 🔥 VERY IMPORTANT (increase timeout)
+    options.app_wait_duration = 120000  # 🔥 wait for app launch
 
     driver = webdriver.Remote("http://127.0.0.1:4723", options=options)
     return driver
