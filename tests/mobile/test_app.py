@@ -1,31 +1,21 @@
+import os
 import allure
 from core.driver import get_driver
 from pages.mobile.app_page import AppPage
 
 
 @allure.epic("APK Automation")
-@allure.feature("Basic Testing")
+@allure.feature("Login Testing")
 
 
-# ✅ Test 1
-def test_click_first_button():
+def test_login():
     driver = get_driver()
     page = AppPage(driver)
 
+    password = os.getenv("APP_PASSWORD", "Test@123")  # fallback for local
+
+    page.enter_text(password)
     page.click_first_button()
-
-    assert page.is_screen_loaded()
-
-    driver.quit()
-
-
-# ✅ Test 2
-def test_click_second_button_with_text():
-    driver = get_driver()
-    page = AppPage(driver)
-
-    page.enter_text("Hello Automation")
-    page.click_second_button()
 
     assert page.is_screen_loaded()
 
