@@ -1,6 +1,5 @@
 from appium.webdriver.common.appiumby import AppiumBy
 
-
 class AppLocator:
     BUTTONS = (AppiumBy.CLASS_NAME, "android.widget.Button")
 
