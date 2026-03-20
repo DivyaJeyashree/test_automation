@@ -12,10 +12,9 @@ def test_login():
     driver = get_driver()
     page = AppPage(driver)
 
-    password = os.getenv("APP_PASSWORD", "Test@123")  # fallback for local
+    password = os.getenv("APP_PASSWORD", "Test@123")
 
-    page.enter_text(password)
-    page.click_first_button()
+    page.login(password)
 
     assert page.is_screen_loaded()
 
