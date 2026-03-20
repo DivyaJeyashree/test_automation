@@ -59,24 +59,23 @@ jobs:
         with:
           node-version: '18'
 
-      # ✅ INSTALL EVERYTHING
+      # ✅ Install dependencies + Appium + driver
       - name: Install Dependencies
         run: |
           pip install -r requirements.txt
           npm install -g appium@2.19.0
-          appium driver install uiautomator2@2.29.2 
+          appium driver install uiautomator2
 
-      # ✅ DOWNLOAD APK FROM RELEASES
+      # ✅ Download APK
       - name: Download APK
         run: |
           curl -L -o app.apk https://github.com/DivyaJeyashree/test_automation/releases/download/v1/app.apk
 
-      # ✅ VERIFY APK
+      # ✅ Verify APK
       - name: Verify APK
-        run: |
-          ls -lh app.apk
+        run: ls -lh app.apk
 
-      # ✅ RUN EMULATOR + TESTS
+      # ✅ Emulator + Tests
       - name: Run Emulator & Tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -101,17 +100,17 @@ jobs:
             adb wait-for-device
 
             echo "Waiting for FULL boot..."
-            sleep 120
+            adb shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 5; done;'
 
             echo "Unlock screen..."
             adb shell input keyevent 82
 
-            echo "Installing APK..."
-            adb install -r app.apk || true
+            echo "Install APK..."
+            adb install -r app.apk
 
-            echo "Starting Appium..."
+            echo "Start Appium..."
             appium > appium.log 2>&1 &
             sleep 30
 
-            echo "Running tests..."
+            echo "Run tests..."
             pytest tests/mobile --alluredir=allure-results-mobile
