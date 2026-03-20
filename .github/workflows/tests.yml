@@ -1,7 +1,6 @@
 name: Automation (API + Web + Mobile)
 
-on:
-  push:
+on: [push]
 
 jobs:
 
@@ -10,11 +9,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
@@ -30,11 +27,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
@@ -53,31 +48,32 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Java
-        uses: actions/setup-java@v4
+      # Java
+      - uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      # Python
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      # Node (Appium)
+      - uses: actions/setup-node@v4
         with:
           node-version: '18'
 
+      # Install dependencies
       - name: Install Dependencies
         run: |
           pip install -r requirements.txt
           npm install -g appium
 
-      - name: Run Emulator & Tests
+      # Emulator + Test
+      - name: Run Emulator & Execute Tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 30
@@ -92,18 +88,59 @@ jobs:
             -gpu swiftshader_indirect
             -accel off
             -no-snapshot
+            -no-snapshot-save
+            -wipe-data
+
+          disable-animations: false
 
           script: |
-            echo "Waiting for emulator..."
+            bash <<'EOF'
+
+            echo "🔄 Restarting ADB..."
+            adb kill-server || true
+            adb start-server
+
             adb wait-for-device
 
-            echo "Installing APK..."
-            adb install app.apk || true
+            echo "⏳ Waiting for emulator boot..."
 
-            echo "Starting Appium..."
+            timeout=300
+            boot_completed=0
+
+            while [ "$boot_completed" != "1" ] && [ $timeout -gt 0 ]; do
+              boot_completed=$(adb shell getprop sys.boot_completed | tr -d '\r')
+              echo "Boot status: $boot_completed"
+              sleep 5
+              timeout=$((timeout-5))
+            done
+
+            if [ "$boot_completed" != "1" ]; then
+              echo "❌ Emulator boot failed"
+              exit 1
+            fi
+
+            echo "✅ Emulator ready"
+
+            echo "📲 Installing APK..."
+            adb install -r app.apk || true
+
+            echo "🚀 Starting Appium..."
             appium > appium.log 2>&1 &
 
-            sleep 20
+            echo "⏳ Waiting for Appium..."
+            timeout=60
+            until curl -s http://127.0.0.1:4723/status > /dev/null; do
+              sleep 2
+              timeout=$((timeout-2))
+              if [ $timeout -le 0 ]; then
+                echo "❌ Appium failed"
+                cat appium.log
+                exit 1
+              fi
+            done
 
-            echo "Running Mobile Tests..."
-            pytest tests/mobile --alluredir=allure-results-mobile
+            echo "✅ Appium ready"
+
+            pytest tests/mobile/test_app.py --alluredir=allure-results-mobile
+
+            EOF
